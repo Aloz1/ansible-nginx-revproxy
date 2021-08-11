@@ -18,6 +18,9 @@ galaxy_info:
         - xenial
         - bionic
         - focal
+    - name: Alpine
+      versions:
+        - any
 
   galaxy_tags:
     - development

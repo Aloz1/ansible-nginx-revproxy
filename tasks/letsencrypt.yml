@@ -1,4 +1,6 @@
 ---
+- name: Include OS-specific variables.
+  include_vars: "{{ ansible_os_family }}.yml"
 
 - name: Install certbot-auto
   get_url:
@@ -11,8 +13,8 @@
     - nginxrevproxy
 
 - name: Install certbot from repository
-  apt:
-    name: "{{ nginx_revproxy_certbot_packages }}"
+  package:
+    name: "{{ nginx_revproxy.pkgs.certbot }}"
     state: present
   when: not nginx_revproxy_certbot_auto
   tags:
@@ -20,7 +22,7 @@
     - nginxrevproxy
 
 - name: Get Active Sites
-  command: ls -1 /etc/nginx/sites-enabled/
+  command: ls -1 "{{ nginx_revproxy.dirs.sites_enabled }}"
   changed_when: "active.stdout_lines != nginx_revproxy_sites.keys()|sort()"
   check_mode: false
   register: active
@@ -33,7 +35,7 @@
     - name: Add Https Site Config
       template:
         src: reverseproxy_ssl.conf.j2
-        dest: /etc/nginx/sites-available/{{ item.key }}.conf
+        dest: "{{ nginx_revproxy.dirs.sites_available }}{{ item.key }}.conf"
         owner: root
         group: root
         mode: 0640
@@ -47,8 +49,8 @@
 
     - name: Enable Site Config
       file:
-        src: /etc/nginx/sites-available/{{ item.key }}.conf
-        dest: /etc/nginx/sites-enabled/{{ item.key }}
+        src: "{{ nginx_revproxy.dirs.sites_available }}{{ item.key }}.conf"
+        dest: "{{ nginx_revproxy.dirs.sites_enabled }}{{ item.key }}"
         state: link
       with_dict: "{{ nginx_revproxy_sites }}"
       register: site_enabled
@@ -74,7 +76,7 @@
 - name: Generate certs (first time)
   command: |
     certbot{{ '-auto' if nginx_revproxy_certbot_auto else '' }} certonly
-    --webroot -w /var/www/{{ item.key }}
+    --webroot -w {{ nginx_revproxy.dirs.html }}{{ item.key }}
     -d {{ item.value.domains | join(' -d ') }}
     --email {{ item.value.letsencrypt_email }}
     --non-interactive --cert-name {{ item.key }}
@@ -88,7 +90,7 @@
 - name: Update Site Config
   template:
     src: reverseproxy_ssl.conf.j2
-    dest: /etc/nginx/sites-available/{{ item.key }}.conf
+    dest: {{ nginx_revproxy.dirs.sites_available }}{{ item.key }}.conf
     owner: root
     group: root
     mode: 0640
@@ -104,7 +106,7 @@
   cron:
     name: "cert-bot renew"
     job: "certbot{{ '-auto' if nginx_revproxy_certbot_auto else '' }} \
-renew --post-hook \"systemctl reload nginx\" >> /var/log/letsencrypt/letsencrypt-update.log 2>&1"
+renew --post-hook \"systemctl reload nginx\" >> {{ nginx_revproxy.dirs.letsencrypt_logs }}letsencrypt-update.log 2>&1"
     hour: "3"
     minute: "30"
     weekday: "1"

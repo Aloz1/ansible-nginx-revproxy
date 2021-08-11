@@ -1,0 +1,22 @@
+---
+nginx_revproxy:
+  dirs:
+    logs: '/var/log/nginx/'
+    letsencrypt_logs: '/var/log/letsencrypt/'
+    html: '/var/www/'
+    htpasswd: '/etc/nginx/htpasswd/'
+    sites_available: '/etc/nginx/sites-available/'
+    sites_enabled: '/etc/nginx/sites-enabled/'
+
+  pkgs:
+    nginx:
+      - nginx
+      - ssl-cert
+
+    passlib:
+      py3: [ python3-passlib ]
+      py2: [ python-passlib ]
+
+    certbot:
+      - certbot
+      - python3-certbot-nginx

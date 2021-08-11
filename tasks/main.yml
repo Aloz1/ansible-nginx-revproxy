@@ -1,10 +1,10 @@
 ---
+- name: Include OS-specific variables.
+  include_vars: "{{ ansible_os_family }}.yml"
 
 - name: Install Nginx and ssl-cert
-  apt:
-    name:
-      - nginx
-      - ssl-cert
+  package:
+    name: '{{ nginx_revproxy.pkgs.nginx }}'
     state: present
   register:
     nginxinstalled
@@ -17,8 +17,7 @@
 
 - name: Install python-passlib for Python 3 hosts
   apt:
-    name:
-      - "python3-passlib"
+    name: '{{ nginx_revproxy.pkgs.passlib.py3 }}'
     state: present
   register:
     result
@@ -30,11 +29,11 @@
     - packages
   when:
     - ansible_python['version']['major'] == 3
+    - item.value.auth is defined
 
 - name: Install python-passlib for Python 2 hosts
   apt:
-    name:
-      - "python-passlib"
+    name: '{{ nginx_revproxy.pkgs.passlib.py2 }}'
     state: present
   register:
     result
@@ -46,23 +45,24 @@
     - packages
   when:
     - ansible_python['version']['major'] == 2
+    - item.value.auth is defined
 
 - name: Set up nginx directories
   file:
-    path: "/etc/nginx/{{ item }}"
+    path: "{{ item }}"
     state: directory
     owner: root
     group: root
     mode: 0640
   with_items:
-    - sites-available
-    - sites-enabled
+    - '{{ nginx_revproxy.dirs.sites_available }}'
+    - '{{ nginx_revproxy.dirs.sites_enabled }}'
   tags:
     - nginxrevproxy
 
 - name: Add authentication
   htpasswd:
-    path: "/etc/nginx/{{ item.key }}_htpasswd"
+    path: "{{ nginx_revproxy.dirs.htpasswd }}{{ item.key }}_htpasswd"
     name: "{{ item.value.auth.login }}"
     password: "{{ item.value.auth.password }}"
     owner: root
@@ -78,7 +78,7 @@
 - name: Add Site Config
   template:
     src: reverseproxy.conf.j2
-    dest: /etc/nginx/sites-available/{{ item.key }}.conf
+    dest: '{{ nginx_revproxy.dirs.sites_available }}{{ item.key }}.conf'
     owner: root
     group: root
     mode: 0640
@@ -95,7 +95,7 @@
 - name: Add Https Site Config
   template:
     src: reverseproxy_ssl.conf.j2
-    dest: /etc/nginx/sites-available/{{ item.key }}.conf
+    dest: '{{ nginx_revproxy.dirs.sites_available }}{{ item.key }}.conf'
     owner: root
     group: root
     mode: 0640
@@ -110,7 +110,7 @@
     - nginxrevproxy
 
 - name: Get Active Sites
-  command: ls -1 /etc/nginx/sites-enabled/
+  command: ls -1 '{{ nginx_revproxy.dirs.sites_enabled }}'
   changed_when: "active.stdout_lines != nginx_revproxy_sites.keys()|sort()"
   check_mode: false
   register: active
@@ -119,7 +119,7 @@
 
 - name: De-activate Sites
   file:
-    path: /etc/nginx/sites-enabled/{{ item }}
+    path: '{{ nginx_revproxy.dirs.sites_enabled }}{{ item }}'
     state: absent
   with_items: "{{ active.stdout_lines }}"
   notify: Reload Nginx
@@ -131,8 +131,8 @@
 
 - name: Enable Site Config
   file:
-    src: /etc/nginx/sites-available/{{ item.key }}.conf
-    dest: /etc/nginx/sites-enabled/{{ item.key }}
+    src: '{{ nginx_revproxy.dirs.sites_available }}{{ item.key }}.conf'
+    dest: '{{ nginx_revproxy.dirs.sites_enabled }}{{ item.key }}'
     state: link
   with_dict: "{{ nginx_revproxy_sites }}"
   notify: Reload Nginx
@@ -145,7 +145,7 @@
 
 - name: Create WebRoot sites
   file:
-    dest: /var/www/{{ item.key }}/.well-known
+    dest: '{{ nginx_revproxy.dirs.html }}{{ item.key }}/.well-known'
     mode: 0775
     state: directory
     owner: www-data
@@ -159,7 +159,7 @@
 
 - name: WebRoot Permissions Sites
   file:
-    dest: /var/www/{{ item.key }}
+    dest: '{{ nginx_revproxy.dirs.html }}{{ item.key }}'
     mode: 0775
     state: directory
     owner: www-data
@@ -173,7 +173,7 @@
     - nginxrevproxy
 
 - name: Get WebRoot Sites
-  command: ls -1 /var/www/
+  command: ls -1 '{{ nginx_revproxy.dirs.html }}'
   changed_when: "webroot.stdout_lines != nginx_revproxy_sites.keys()|sort()"
   check_mode: false
   register: webroot
@@ -182,7 +182,7 @@
 
 - name: Remove WebRoot Sites
   file:
-    path: /var/www/{{ item }}/
+    path: '{{ nginx_revproxy.dirs.html }}'/var/www/{{ item }}/
     state: absent
   with_items: "{{ webroot.stdout_lines }}"
   notify: Reload Nginx
