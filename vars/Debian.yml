@@ -1,5 +1,8 @@
 ---
 nginx_revproxy:
+  nginx_user: 'www-data'
+  nginx_group: 'www-data'
+
   dirs:
     logs: '/var/log/nginx/'
     letsencrypt_logs: '/var/log/letsencrypt/'
@@ -7,6 +10,8 @@ nginx_revproxy:
     htpasswd: '/etc/nginx/htpasswd/'
     sites_available: '/etc/nginx/sites-available/'
     sites_enabled: '/etc/nginx/sites-enabled/'
+
+  certbot_renew_hook: systemctl reload nginx
 
   pkgs:
     nginx:

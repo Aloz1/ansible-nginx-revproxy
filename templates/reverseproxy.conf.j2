@@ -10,8 +10,8 @@ server {
     server_name _;
     return        444;
 
-    access_log {{ nginx_revproxy.dirs.log }}{{ item.key }}_access.log;
-    error_log {{ nginx_revproxy.dirs.log }}{{ item.key }}_error.log {{ item.value.log_level | default('error') }};
+    access_log {{ nginx_revproxy.dirs.logs }}{{ item.key }}_access.log;
+    error_log {{ nginx_revproxy.dirs.logs }}{{ item.key }}_error.log {{ item.value.log_level | default('error') }};
 
 }
 
@@ -51,8 +51,8 @@ server {
         alias {{ nginx_revproxy.dirs.html }}{{ item.key }}/.well-known;
     }
 
-    access_log {{ nginx_revproxy.dirs.log }}{{ item.key }}_access.log;
-    error_log {{ nginx_revproxy.dirs.log }}{{ item.key }}_error.log error;
+    access_log {{ nginx_revproxy.dirs.logs }}{{ item.key }}_access.log;
+    error_log {{ nginx_revproxy.dirs.logs }}{{ item.key }}_error.log {{ item.value.log_level | default('error') }};
 
 }
 {% endif %}

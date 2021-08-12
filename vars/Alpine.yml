@@ -1,12 +1,17 @@
 ---
 nginx_revproxy:
+  nginx_user: 'nginx'
+  nginx_group: 'nginx'
+
   dirs:
     logs: '/var/log/nginx/'
     letsencrypt_logs: '/var/log/letsencrypt/'
-    html: '/var/lib/nginx/html/'
+    html: '/var/lib/nginx/sites/'
     htpasswd: '/etc/nginx/htpasswd/'
     sites_available: '/etc/nginx/http.available/'
     sites_enabled: '/etc/nginx/http.d/'
+
+  certbot_renew_hook: rc-service nginx reload
 
   pkgs:
     nginx:

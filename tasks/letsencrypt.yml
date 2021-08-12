@@ -23,7 +23,7 @@
 
 - name: Get Active Sites
   command: ls -1 "{{ nginx_revproxy.dirs.sites_enabled }}"
-  changed_when: "active.stdout_lines != nginx_revproxy_sites.keys()|sort()"
+  changed_when: "active.stdout_lines != nginx_revproxy_sites.keys()|sort()|map('regex_replace','$','.conf')"
   check_mode: false
   register: active
   tags:
@@ -50,7 +50,7 @@
     - name: Enable Site Config
       file:
         src: "{{ nginx_revproxy.dirs.sites_available }}{{ item.key }}.conf"
-        dest: "{{ nginx_revproxy.dirs.sites_enabled }}{{ item.key }}"
+        dest: "{{ nginx_revproxy.dirs.sites_enabled }}{{ item.key }}.conf"
         state: link
       with_dict: "{{ nginx_revproxy_sites }}"
       register: site_enabled
@@ -81,6 +81,7 @@
     --email {{ item.value.letsencrypt_email }}
     --non-interactive --cert-name {{ item.key }}
     --agree-tos creates=/etc/letsencrypt/live/{{ item.key }}/fullchain.pem
+    {{ '--dry-run' if item.value.letsencrypt_dryrun|default(False) else '' }}
   with_dict: "{{ nginx_revproxy_sites }}"
   when: item.value.letsencrypt | default(False)
   tags:
@@ -90,7 +91,7 @@
 - name: Update Site Config
   template:
     src: reverseproxy_ssl.conf.j2
-    dest: {{ nginx_revproxy.dirs.sites_available }}{{ item.key }}.conf
+    dest: "{{ nginx_revproxy.dirs.sites_available }}{{ item.key }}.conf"
     owner: root
     group: root
     mode: 0640
@@ -106,7 +107,7 @@
   cron:
     name: "cert-bot renew"
     job: "certbot{{ '-auto' if nginx_revproxy_certbot_auto else '' }} \
-renew --post-hook \"systemctl reload nginx\" >> {{ nginx_revproxy.dirs.letsencrypt_logs }}letsencrypt-update.log 2>&1"
+renew --post-hook \"{{ nginx_revproxy.certbot_renew_hook }}\" >> {{ nginx_revproxy.dirs.letsencrypt_logs }}letsencrypt-update.log 2>&1"
     hour: "3"
     minute: "30"
     weekday: "1"

@@ -1,5 +1,10 @@
 ---
 
+- name: Enable Nginx
+  service:
+    name: nginx
+    enable: true
+
 - name: Start Nginx
   service:
     name: nginx
